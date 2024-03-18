@@ -2,10 +2,59 @@
 #include <iostream>
 #include <thread>
 #include <unistd.h>
-
+#include "BigInt.hpp"
+#include <random>
 void timer() {
 	while (true) {sleep(1);}
 }
+
+
+struct cryptoMethods {
+	BigInt sharedKey = std::string("0");
+	
+	int genRandom(int from, int upto) {
+		std::random_device rd;
+		std::mt19937_64 gen(rd());
+		std::uniform_int_distribution<> dist(from, upto);
+		return dist(gen);
+	}
+
+	BigInt genSharedKey(int accepted) {
+		BigInt generator = 2;
+		BigInt mod = std::string("42571564251765425471355154626165452431571334621325420624815730163446612426143167826542156263");
+		std::cout << "generating and exchanging public key...\n";
+		int exponent = genRandom(11, 999999);
+		int expCopy = exponent;
+		BigInt res = 1;
+		while (exponent > 0) {
+			if (exponent % 2 == 1) {
+				res = (res * generator) % mod;
+			}
+
+			generator = (generator * generator) % mod;
+			exponent /= 2;
+		}
+		char resChar[res.to_string().length()+1] = "";
+		char friChar[500] = "";
+		strcpy(resChar, res.to_string().c_str());
+		send_net(accepted, resChar, sizeof(resChar));
+		BigInt friendsKey(0);
+		recv_net(accepted, friChar, sizeof(friChar));
+		std::cout << "generating session key...\n";
+		BigInt result = 1;
+		friendsKey = friChar;
+		while (expCopy > 0) {
+			if (expCopy % 2 == 1) {
+				result = (result * friendsKey) % mod;
+			}
+
+			friendsKey = (friendsKey * friendsKey) % mod;
+			expCopy /= 2;
+		}
+		return result;
+	}
+};
+
 
 void messageHandler(int accepted, char* buffer) {
 	// server response any message
@@ -14,7 +63,7 @@ void messageHandler(int accepted, char* buffer) {
 		char buf[] = "help - get command list\nversion - get server time\n";
 		send_net(accepted, buf, sizeof(buf));
 	} else if (clientMessage == "version") {
-		char buf[] = "Server version: 1.6 (No encrypted)\n";
+		char buf[] = "Server version: 1.7 (With test encryption)\n";
 		send_net(accepted, buf, sizeof(buf));
 	} else {
 		char buf[] = "Unknown command\n";
@@ -23,6 +72,12 @@ void messageHandler(int accepted, char* buffer) {
 }
 
 void messageCatcher(int accepted, bool firstConnect) {
+	// Encryption
+	cryptoMethods crm;
+	crm.sharedKey = crm.genSharedKey(accepted);
+	std::cout << crm.sharedKey.to_string();
+	
+	
 	if (firstConnect) { // welcome message
 		char welcomeMessage[] = "Welcome from server! Use help for get command list\n";
 		send_net(accepted, welcomeMessage, sizeof(welcomeMessage));
