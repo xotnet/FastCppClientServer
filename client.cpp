@@ -1,14 +1,7 @@
-#include "net.cpp"
+#include "net.hpp"
 #include <iostream>
 #include "BigInt.hpp"
-#include <random>
-
-int genRandom(int from, int upto) {
-	std::random_device rd;
-	std::mt19937_64 gen(rd());
-	std::uniform_int_distribution<> dist(from, upto);
-	return dist(gen);
-}
+#include "misc.hpp"
 
 int main() {
 	int conn_sock = connect_net("127.0.0.1", "1597");
@@ -28,9 +21,10 @@ int main() {
 		generator = (generator * generator) % mod;
 		exponent /= 2;
 	}
-	char resChar[res.to_string().length()+1] = "";
+	std::string publicKeyToSend = "EncExchP1" + res.to_string();
+	char resChar[publicKeyToSend.length()+1] = "";
 	char friChar[500] = "";
-	strcpy(resChar, res.to_string().c_str());
+	strcpy(resChar, publicKeyToSend.c_str());
 	recv_net(conn_sock, friChar, sizeof(friChar));
 	send_net(conn_sock, resChar, sizeof(resChar));
 	BigInt friendsKey(0);
@@ -41,24 +35,24 @@ int main() {
 		if (expCopy % 2 == 1) {
 			result = (result * friendsKey) % mod;
 		}
-
 		friendsKey = (friendsKey * friendsKey) % mod;
 		expCopy /= 2;
 	}
-	std::cout << "Shared secret is: " << result << "\n\n";
+	std::cout << "session secret is: " << result << "\n\n";
 	// result is shared secret
-	
 	while (true) {
 		char recvArrayBuf[1024] = "";
 		std::string buff = "";
 		
 		// recv
 		recv_net(conn_sock, recvArrayBuf, sizeof(recvArrayBuf));
-		std::cout << recvArrayBuf << '\n';
+		std::string decryptedMessage = toStringAndDecrypt(recvArrayBuf, readPiece(result.to_string(), 12, 24));
+		std::cout << decryptedMessage << '\n';
 		
 		//send
 		std::cout << "Message to send: ";
 		std::getline(std::cin, buff);
+		buff = toBitAndEncrypt(buff, readPiece(result.to_string(), 12, 24));
 		char charArrayBuff[buff.length()] = "";
 		strcpy(charArrayBuff, buff.c_str());
 		send_net(conn_sock, charArrayBuff, buff.length());

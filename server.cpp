@@ -1,28 +1,14 @@
-#include "net.cpp"
+#include "net.hpp"
+#include "misc.hpp"
 #include <iostream>
 #include <thread>
-#include <unistd.h>
 #include "BigInt.hpp"
-#include <random>
-void timer() {
-	while (true) {sleep(1);}
-}
-
 
 struct cryptoMethods {
 	BigInt sharedKey = std::string("0");
-	
-	int genRandom(int from, int upto) {
-		std::random_device rd;
-		std::mt19937_64 gen(rd());
-		std::uniform_int_distribution<> dist(from, upto);
-		return dist(gen);
-	}
-
 	BigInt genSharedKey(int accepted) {
 		BigInt generator = 2;
 		BigInt mod = std::string("42571564251765425471355154626165452431571334621325420624815730163446612426143167826542156263");
-		std::cout << "generating and exchanging public key...\n";
 		int exponent = genRandom(11, 999999);
 		int expCopy = exponent;
 		BigInt res = 1;
@@ -30,7 +16,6 @@ struct cryptoMethods {
 			if (exponent % 2 == 1) {
 				res = (res * generator) % mod;
 			}
-
 			generator = (generator * generator) % mod;
 			exponent /= 2;
 		}
@@ -40,14 +25,19 @@ struct cryptoMethods {
 		send_net(accepted, resChar, sizeof(resChar));
 		BigInt friendsKey(0);
 		recv_net(accepted, friChar, sizeof(friChar));
-		std::cout << "generating session key...\n";
+		// check crypt "protocol" of friChar
+		std::string friString = "";
+		if (readPiece(friChar, 0, 9) != "EncExchP1") {
+			return BigInt(0);
+		} else {
+			friString = readPiece(friChar, 9);
+		}
 		BigInt result = 1;
-		friendsKey = friChar;
+		friendsKey = friString;
 		while (expCopy > 0) {
 			if (expCopy % 2 == 1) {
 				result = (result * friendsKey) % mod;
 			}
-
 			friendsKey = (friendsKey * friendsKey) % mod;
 			expCopy /= 2;
 		}
@@ -56,30 +46,34 @@ struct cryptoMethods {
 };
 
 
-void messageHandler(int accepted, char* buffer) {
+void messageHandler(int accepted, char* buffer, std::string key) {
 	// server response any message
-	std::string clientMessage = std::string(buffer);
+	std::string clientMessage = toStringAndDecrypt(std::string(buffer), readPiece(key, 12, 24));
+		std::cout << "[D" << accepted << "] " << clientMessage << '\n';
 	if (clientMessage == "help") {
 		char buf[] = "help - get command list\nversion - get server time\n";
+		encryptMessage(buf, key);
 		send_net(accepted, buf, sizeof(buf));
 	} else if (clientMessage == "version") {
-		char buf[] = "Server version: 1.7 (With test encryption)\n";
+		char buf[] = "Server version: 1.8 (With encryption)\n";
+		encryptMessage(buf, key);
 		send_net(accepted, buf, sizeof(buf));
 	} else {
 		char buf[] = "Unknown command\n";
+		encryptMessage(buf, key);
 		send_net(accepted, buf, sizeof(buf));
 	}
 }
 
-void messageCatcher(int accepted, bool firstConnect) {
+void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm) {
 	// Encryption
-	cryptoMethods crm;
-	crm.sharedKey = crm.genSharedKey(accepted);
-	std::cout << crm.sharedKey.to_string();
-	
+	if (crm.sharedKey == BigInt(0)) {
+		crm.sharedKey = crm.genSharedKey(accepted);
+	}
 	
 	if (firstConnect) { // welcome message
-		char welcomeMessage[] = "Welcome from server! Use help for get command list\n";
+		char welcomeMessage[100] = "Welcome from server! Use help for get command list\n";
+		encryptMessage(welcomeMessage, crm.sharedKey.to_string());
 		send_net(accepted, welcomeMessage, sizeof(welcomeMessage));
 	}
 	char buffer[1024] = "";
@@ -90,10 +84,9 @@ void messageCatcher(int accepted, bool firstConnect) {
 		return;
 	}
 	// if client online
-	std::cout << "[D" << accepted << "] " << buffer << '\n';
-	messageHandler(accepted, buffer);
-	std::thread messageHandler_thread(messageCatcher, accepted, false);
-	messageHandler_thread.detach();
+	messageHandler(accepted, buffer, crm.sharedKey.to_string());
+	std::thread messageCatcher_thread(messageCatcher, accepted, false, crm);
+	messageCatcher_thread.detach();
 }
 
 void acceptorOfNewConnections(int listener) {
@@ -102,7 +95,8 @@ void acceptorOfNewConnections(int listener) {
 	int accepted = accept_net(listener);
 	std::cout << "[D" << accepted << "] " << "Client connected! \n";
 	// Forward this client to message catcher
-	std::thread messageHandler_thread(messageCatcher, accepted, true);
+	cryptoMethods crm;
+	std::thread messageHandler_thread(messageCatcher, accepted, true, crm);
 	messageHandler_thread.detach();
 	// Now continue listen new connections
 	std::thread accept_thread(acceptorOfNewConnections, listener);
