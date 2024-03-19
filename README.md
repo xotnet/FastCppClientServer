@@ -1,5 +1,5 @@
 # FastCppClientServer
-**MultiPlatform fast multithread client-server on C++**
+**MultiPlatform fast multithread with encrypted communication client-server on C++**
 
 <img src="img/image.png"/>
 
