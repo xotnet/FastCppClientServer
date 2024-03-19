@@ -1,4 +1,3 @@
-#include "net.hpp"
 #include <iostream>
 #include "BigInt.hpp"
 #include "misc.hpp"
@@ -46,13 +45,13 @@ int main() {
 		
 		// recv
 		recv_net(conn_sock, recvArrayBuf, sizeof(recvArrayBuf));
-		std::string decryptedMessage = toStringAndDecrypt(recvArrayBuf, readPiece(result.to_string(), 12, 24));
-		std::cout << decryptedMessage << '\n';
+		std::string decryptedMessage = crySynMethod(std::string(recvArrayBuf), result.to_string());
+		std::cout << '\n' << decryptedMessage << '\n';
 		
 		//send
 		std::cout << "Message to send: ";
 		std::getline(std::cin, buff);
-		buff = toBitAndEncrypt(buff, readPiece(result.to_string(), 12, 24));
+		buff = crySynMethod(buff, result.to_string());
 		char charArrayBuff[buff.length()] = "";
 		strcpy(charArrayBuff, buff.c_str());
 		send_net(conn_sock, charArrayBuff, buff.length());

@@ -1,7 +1,8 @@
 #include <bitset>
+#include "net.hpp"
 #include <unistd.h>
 #include <random>
-
+#include <cstring>
 void timer() {
 	while (true) {sleep(1);}
 }
@@ -22,36 +23,22 @@ std::string readPiece(std::string inputString, int start, int end = -1) {
 	return result;
 }
 
-std::string toBitAndEncrypt(std::string inputString, std::string key) {
+std::string crySynMethod(std::string inputString, std::string key) {
 	std::string toChars16bit = "";
 	std::string bitsAfterCrypting = "";
 	int i = 0;
+	int cycleCounter = (key[0]-'0')+(key[1]-'0');
 	for (char c : inputString) { // every char in message
-		std::bitset<16> bits(c); // bitset is container with size 16
-		for (int u = 0; u < key.length(); u++) { // bitset in key char
-			std::bitset<16> keyCharToBit(key[u]);
-			std::bitset<16> indexBitsPool(i);
-			int pBitsCounter = 0;
-			for (int v=0;v<key.length()*8;v++) { // data to indexBitsPool based on key
-				for (char o : key) {
-					std::bitset<16> bitsOfKeySym(o);
-					for (int ii = 0; ii < 16; ii++) {
-						if (bitsOfKeySym[ii] == 1) {pBitsCounter += 1;}
-					}
-				}
-			}
-			bits = bits ^ keyCharToBit; // xor
-			std::bitset<16> pBitsCounterToBits(pBitsCounter);
-			indexBitsPool = indexBitsPool ^ pBitsCounterToBits;
-			for (int l = 0; l < 16; l++) {
-				if (keyCharToBit[l] == 1) {
-					bits = bits ^ keyCharToBit; // xor
-					bits = bits ^ indexBitsPool; // xor
-				}
-			}
+		std::bitset<16> bits(c);
+		for (int g = 0; g<key.length(); g = g + cycleCounter) {
+			std::bitset<16> keyBitSet(key[g]);
+			std::bitset<16> indexBits(key[i]);
+			bits = bits ^ keyBitSet;
+			bits = bits ^ indexBits;
+			if (i < key.length()-1) {i++;}
+			else {i = 0;}
 		}
 		bitsAfterCrypting = bitsAfterCrypting + bits.to_string();
-		i++;
 	}
 	for (int b = 0; b < bitsAfterCrypting.length(); b = b+16) {
 		std::string bitsPreset = "";
@@ -63,48 +50,10 @@ std::string toBitAndEncrypt(std::string inputString, std::string key) {
 	}
 	return toChars16bit;
 }
-
-std::string toStringAndDecrypt(std::string inputString, std::string key) {
-	std::string toCharFromBin = "";
-	std::string bitsAfterCrypting = "";
-	for (int i = 0; i < inputString.length(); i++) { // every char in encrypted message
-		std::bitset<16> bits(inputString[i]); // convert char to bitset
-		for (int u = 0; u < key.length(); u++) { // bitset in key char
-			std::bitset<16> keyCharToBit(key[u]);
-			std::bitset<16> indexBitsPool(i);
-			int pBitsCounter = 0;
-			for (int v=0;v<key.length()*8;v++) { // data to indexBitsPool based on key
-				for (char o : key) {
-					std::bitset<16> bitsOfKeySym(o);
-					for (int ii = 0; ii < 16; ii++) {
-						if (bitsOfKeySym[ii] == 1) {pBitsCounter += 1;}
-					}
-				}
-			}
-			bits = bits ^ keyCharToBit; // xor
-			std::bitset<16> pBitsCounterToBits(pBitsCounter);
-			indexBitsPool = indexBitsPool ^ pBitsCounterToBits;
-			for (int l = 0; l < 16; l++) {
-				if (keyCharToBit[l] == 1) {
-					bits = bits ^ keyCharToBit;
-					bits = bits ^ indexBitsPool;
-				}
-			}
-		}
-		bitsAfterCrypting = bitsAfterCrypting + bits.to_string();
-	}
-	for (int b = 0; b < bitsAfterCrypting.length(); b = b+16) {
-		std::string bitsPreset = "";
-		for (int j = 0; j < 16; j++) {
-			bitsPreset = bitsPreset + bitsAfterCrypting[b+j];
-		}
-		std::bitset<16> bits(bitsPreset);
-		toCharFromBin = toCharFromBin + static_cast<char>(bits.to_ulong());
-	}
-	return toCharFromBin;
-}
-
-void encryptMessage(char* message, std::string key) {
-	std::string encryptedMessage = toBitAndEncrypt(message, readPiece(key, 12, 24));
+#include <iostream>
+void sendAndEncryptMessage(int accepted, char* message, std::string key) {
+	std::string encryptedMessage = crySynMethod(std::string(message), key);
 	strcpy(message, encryptedMessage.c_str());
+	unsigned int sizeMessage = encryptedMessage.length();
+	send_net(accepted, message, sizeMessage);
 }
