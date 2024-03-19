@@ -3,6 +3,10 @@
 
 <img src="img/image.png"/>
 
+**Example of encryption (Based on DH)**
+
+<img src="img/image2.png"/>
+
 * tested on C++ 13
 
 **BitCoin DONATION** ☕️: ```bc1q24sqqj6p6htuktap2vht2uzna9u7w3wlk8kfwk```
