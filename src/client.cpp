@@ -38,7 +38,7 @@ BigInt genKey(int conn_sock) {
 }
 
 int main() {
-	int conn_sock = connect_net("127.0.0.1", "1597");
+	int conn_sock = connect_net("144.24.145.117", "1597");
     if (conn_sock == -1) {std::cerr << "[Err] Server is down\n"; return 0;}
 	
     // BotFilterClient

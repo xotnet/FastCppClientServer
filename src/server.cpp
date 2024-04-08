@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 #include "BigInt.hpp"
-// TODO: add keepAlive 
+
 struct cryptoMethods {
 	BigInt sharedKey = std::string("0");
 	BigInt genSharedKey(int accepted) {
@@ -22,11 +22,12 @@ struct cryptoMethods {
 			char resChar[res.to_string().length()+1] = "";
 			char friChar[500] = "";
 			strcpy(resChar, res.to_string().c_str());
-			send_net(accepted, resChar, sizeof(resChar));
+			if (send_net(accepted, resChar, sizeof(resChar)) == -1) {return 0;}
+			if (recv_net(accepted, friChar, sizeof(friChar)) == -1) {return 0;}
 			BigInt friendsKey(0);
-			recv_net(accepted, friChar, sizeof(friChar));
 			// check crypt "protocol" of friChar
 			std::string friString = "";
+			if (sizeof(friChar) < 10) {return 0;}
 			if (readPiece(friChar, 0, 9) != "EncExchP1") {
 				return BigInt(0);
 			} else {
@@ -47,17 +48,15 @@ struct cryptoMethods {
 };
 
 bool BotFilter(int accepted) {
-    std::string ClientIP = getPeerIp_net(accepted); // Check if in ban list
-    std::cout << "Checking is user ****" << ClientIP.substr(ClientIP.length()-6, 6) << '\n';
         // Checking
     std::string command = "print                               [BOTFILTER]\n\nWe are checking your connection for legit...\n";
-    send_net(accepted, command.data(), command.length());
-    sleep(3); // Should I wait this way
+    if (send_net(accepted, &command[0], command.length()) == -1) {return false;}
+    sleep(3);
         // If legit
     command = "print You passed BOT CHECK\n\n\n";
-    send_net(accepted, command.data(), command.length());
+    if (send_net(accepted, &command[0], command.length()) == -1) {return false;}
     command = "BotCheck passed";
-    send_net(accepted, command.data(), command.length());
+    if (send_net(accepted, &command[0], command.length()) == -1) {return false;}
     return true;
 }
 
@@ -87,7 +86,8 @@ void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm, bool mak
     if (!isLegit) {
         std::cout << "[D" << accepted << "] " << "Bot detected\n";
         close_net(accepted);
-    }
+		return;
+	}
 	// Encryption
 	if (crm.sharedKey == BigInt(0)) {
 		crm.sharedKey = crm.genSharedKey(accepted);
@@ -111,8 +111,6 @@ void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm, bool mak
 }
 
 void acceptorOfNewConnections(int listener) {
-	sockaddr* addr;
-	int* addrLen = NULL;
 	int accepted = accept_net(listener);
 	std::cout << "[D" << accepted << "] " << "Client connected! \n";
 	// Forward this client to message catcher
