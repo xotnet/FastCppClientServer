@@ -7,6 +7,7 @@ struct cryptoMethods {
 	BigInt sharedKey = std::string("0");
 	BigInt genSharedKey(int accepted) {
 		try {
+			std::string ip = getPeerIp_net(accepted);
 			BigInt generator = 2;
 			BigInt mod = std::string("42571564251765425471355154626165452431571334621325420624815730163446612426143167826542156263");
 			int exponent = genRandom(11, 999999);
@@ -22,8 +23,8 @@ struct cryptoMethods {
 			char resChar[res.to_string().length()+1] = "";
 			char friChar[500] = "";
 			strcpy(resChar, res.to_string().c_str());
-			if (send_net(accepted, resChar, sizeof(resChar)) == -1) {return 0;}
-			if (recv_net(accepted, friChar, sizeof(friChar)) == -1) {return 0;}
+			if (send_net(accepted, resChar, sizeof(resChar)) == -1) {std::cout << "[" << ip << "] " << "Client disconnected\n"; return 0;}
+			if (recv_net(accepted, friChar, sizeof(friChar)) == -1) {std::cout << "[" << ip << "] " << "Client disconnected\n"; return 0;}
 			BigInt friendsKey(0);
 			// check crypt "protocol" of friChar
 			std::string friString = "";
@@ -48,22 +49,23 @@ struct cryptoMethods {
 };
 
 bool BotFilter(int accepted) {
+	std::string ip = getPeerIp_net(accepted);
         // Checking
     std::string command = "print                               [BOTFILTER]\n\nWe are checking your connection for legit...\n";
-    if (send_net(accepted, &command[0], command.length()) == -1) {return false;}
+    if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}
     sleep(3);
         // If legit
     command = "print You passed BOT CHECK\n\n\n";
-    if (send_net(accepted, &command[0], command.length()) == -1) {return false;}
+    if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}
     command = "BotCheck passed";
-    if (send_net(accepted, &command[0], command.length()) == -1) {return false;}
+    if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}
     return true;
 }
 
 void messageHandler(int accepted, char* buffer, std::string key) {
 	// server response any message
 	std::string clientMessage = crySynMethod(std::string(buffer), key);
-	std::cout << "[D" << accepted << "] " << clientMessage << '\n';
+	std::cout << "[" << getPeerIp_net(accepted) << "] " << clientMessage << '\n';
 	if (clientMessage == "help") {
 		char buf[] = "help - get command list\nversion - get server time\nencryption - get server encryption protocol\n";
 		sendAndEncryptMessage(accepted, buf, key);
@@ -80,17 +82,18 @@ void messageHandler(int accepted, char* buffer, std::string key) {
 }
 
 void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm, bool makeBotCheck) {
+	std::string ip = getPeerIp_net(accepted);
     //BotFilterServer
 	bool isLegit = 1;
     if (makeBotCheck) {isLegit = BotFilter(accepted);}
     if (!isLegit) {
-        std::cout << "[D" << accepted << "] " << "Bot detected\n";
         close_net(accepted);
 		return;
 	}
 	// Encryption
 	if (crm.sharedKey == BigInt(0)) {
 		crm.sharedKey = crm.genSharedKey(accepted);
+		if (crm.sharedKey == BigInt(0)) {return;}
 	}
 	
 	if (firstConnect) { // welcome message
@@ -98,9 +101,9 @@ void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm, bool mak
 		sendAndEncryptMessage(accepted, welcomeMessage, crm.sharedKey.to_string());
 	}
 	char buffer[1024] = "";
-	int messageBytes = recv_net(accepted, buffer, sizeof(buffer));
+	if (int messageBytes = recv_net(accepted, buffer, sizeof(buffer)) == -1) {return;}
 	if (buffer[0] == 0) { // if client exit
-		std::cout << "[D" << accepted << "] " << "Client disconnected\n";
+		std::cout << "[" << ip << "] " << "Client disconnected\n";
 		close_net(accepted);
 		return;
 	}
@@ -112,7 +115,7 @@ void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm, bool mak
 
 void acceptorOfNewConnections(int listener) {
 	int accepted = accept_net(listener);
-	std::cout << "[D" << accepted << "] " << "Client connected! \n";
+	std::cout << "[" << getPeerIp_net(accepted) << "] " << "Client connected! \n";
 	// Forward this client to message catcher
 	cryptoMethods crm;
 	std::thread messageHandler_thread(messageCatcher, accepted, true, crm, true);
