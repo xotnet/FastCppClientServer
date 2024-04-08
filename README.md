@@ -7,6 +7,13 @@
 
 <img src="img/image2.png"/>
 
+**Build**
+
+1. **```cmake -G "MinGW Makefiles" .```** // for windows **```cmake .```** // for linux
+
+2. **```cmake --build .```**
+
+
 * tested on C++ 13
 
 **BitCoin DONATION** ☕️: ```bc1q24sqqj6p6htuktap2vht2uzna9u7w3wlk8kfwk```
