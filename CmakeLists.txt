@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.5)
+set(CMAKE_CXX_COMPILER "g++")
+set(CMAKE_C_COMPILER "gcc")
+
+set(EXECUTABLE_OUTPUT_PATH "build")
+
+project(server)
+project(client)
+
+add_executable(server server.cpp)
+if(UNIX AND NOT APPLE)
+    find_package(Threads REQUIRED)
+    set(EXTRA_LIBS ${EXTRA_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+else()
+	target_link_libraries(server ws2_32.a)
+endif()
+target_link_options(server PUBLIC -s)
+
+add_executable(client client.cpp)
+if(UNIX AND NOT APPLE)
+    find_package(Threads REQUIRED)
+    set(EXTRA_LIBS ${EXTRA_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+else()
+	target_link_libraries(client ws2_32.a)
+endif()
+target_link_options(client PUBLIC -s)
+
+file(REMOVE "CMakeCache.txt")
+file(REMOVE "cmake_install.cmake")
+file(REMOVE "Makefile")
+file(REMOVE_RECURSE "CMakeFiles")

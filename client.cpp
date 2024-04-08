@@ -2,11 +2,8 @@
 #include "BigInt.hpp"
 #include "misc.hpp"
 
-int main() {
-	int conn_sock = connect_net("127.0.0.1", "1597");
-	
-	// gen shared key
-	BigInt generator = 2;
+BigInt genKey(int conn_sock) {
+    BigInt generator = 2;
 	BigInt mod = std::string("42571564251765425471355154626165452431571334621325420624815730163446612426143167826542156263");
 	std::cout << "generating and exchanging public key...\n";
 	int exponent = genRandom(11, 999999);
@@ -37,6 +34,25 @@ int main() {
 		friendsKey = (friendsKey * friendsKey) % mod;
 		expCopy /= 2;
 	}
+    return result;
+}
+
+int main() {
+	int conn_sock = connect_net("127.0.0.1", "1597");
+    if (conn_sock == -1) {std::cerr << "[Err] Server is down\n"; return 0;}
+	
+    // BotFilterClient
+    char recvBFBuf[1024] = "";
+    while (std::string(recvBFBuf) != "BotCheck passed") {
+        memset(recvBFBuf, '\0', sizeof(recvBFBuf));
+        recv_net(conn_sock, recvBFBuf, sizeof(recvBFBuf));
+        if (std::string(recvBFBuf).substr(0, 5) == "print") {
+            std::cout << std::string(recvBFBuf).substr(6);
+        }
+    }
+    
+	// gen shared key
+	BigInt result = genKey(conn_sock);
 	std::cout << "session secret is: " << result << "\n\n";
 	// result is shared secret
 	while (true) {

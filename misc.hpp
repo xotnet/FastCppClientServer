@@ -1,5 +1,5 @@
 #include <bitset>
-#include "net.hpp"
+#include "net.h"
 #include <unistd.h>
 #include <random>
 #include <cstring>

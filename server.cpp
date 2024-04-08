@@ -46,19 +46,33 @@ struct cryptoMethods {
 	}
 };
 
+bool BotFilter(int accepted) {
+    std::string ClientIP = getPeerIp_net(accepted); // Check if in ban list
+    std::cout << "Checking is user ****" << ClientIP.substr(ClientIP.length()-6, 6) << '\n';
+        // Checking
+    std::string command = "print                               [BOTFILTER]\n\nWe are checking your connection for legit...\n";
+    send_net(accepted, command.data(), command.length());
+    sleep(3); // Should I wait this way
+        // If legit
+    command = "print You passed BOT CHECK\n\n\n";
+    send_net(accepted, command.data(), command.length());
+    command = "BotCheck passed";
+    send_net(accepted, command.data(), command.length());
+    return true;
+}
 
 void messageHandler(int accepted, char* buffer, std::string key) {
 	// server response any message
 	std::string clientMessage = crySynMethod(std::string(buffer), key);
-		std::cout << "[D" << accepted << "] " << clientMessage << '\n';
+	std::cout << "[D" << accepted << "] " << clientMessage << '\n';
 	if (clientMessage == "help") {
 		char buf[] = "help - get command list\nversion - get server time\nencryption - get server encryption protocol\n";
 		sendAndEncryptMessage(accepted, buf, key);
 	} else if (clientMessage == "version") {
-		char buf[] = "Server version: 1.8 (With fast encryption)\n";
+		char buf[] = "Server version: 1.9 (With fast encryption and BotFilter)\n";
 		sendAndEncryptMessage(accepted, buf, key);
 	} else if (clientMessage == "encryption") {
-		char buf[] = "Server use fast server xor encryption behind Diffie Hellman key exchange. This is 1.2 version of encryption protocol\n";
+		char buf[] = "Server use fast server xor encryption behind Diffie Hellman key exchange. This is 1.2 version of server encryption protocol\n";
 		sendAndEncryptMessage(accepted, buf, key);
 	} else {
 		char buf[] = "Unknown command\n";
@@ -66,7 +80,14 @@ void messageHandler(int accepted, char* buffer, std::string key) {
 	}
 }
 
-void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm) {
+void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm, bool makeBotCheck) {
+    //BotFilterServer
+	bool isLegit = 1;
+    if (makeBotCheck) {isLegit = BotFilter(accepted);}
+    if (!isLegit) {
+        std::cout << "[D" << accepted << "] " << "Bot detected\n";
+        close_net(accepted);
+    }
 	// Encryption
 	if (crm.sharedKey == BigInt(0)) {
 		crm.sharedKey = crm.genSharedKey(accepted);
@@ -85,7 +106,7 @@ void messageCatcher(int accepted, bool firstConnect, cryptoMethods crm) {
 	}
 	// if client online
 	messageHandler(accepted, buffer, crm.sharedKey.to_string());
-	std::thread messageCatcher_thread(messageCatcher, accepted, false, crm);
+	std::thread messageCatcher_thread(messageCatcher, accepted, false, crm, false);
 	messageCatcher_thread.detach();
 }
 
@@ -96,7 +117,7 @@ void acceptorOfNewConnections(int listener) {
 	std::cout << "[D" << accepted << "] " << "Client connected! \n";
 	// Forward this client to message catcher
 	cryptoMethods crm;
-	std::thread messageHandler_thread(messageCatcher, accepted, true, crm);
+	std::thread messageHandler_thread(messageCatcher, accepted, true, crm, true);
 	messageHandler_thread.detach();
 	// Now continue listen new connections
 	std::thread accept_thread(acceptorOfNewConnections, listener);
@@ -106,7 +127,7 @@ void acceptorOfNewConnections(int listener) {
 int main() {
 	const char serverPort[] = "1597";
 	std::cout << "Server started on port " << serverPort << '\n';
-	int listener = listen_net(serverPort); // start server on port 1597
+	int listener = listen_net("0.0.0.0", serverPort); // start server on port 1597
 	std::thread accept_thread(acceptorOfNewConnections, listener); // start root thread
 	accept_thread.detach();
 	timer();
