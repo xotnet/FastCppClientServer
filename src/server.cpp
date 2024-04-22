@@ -55,9 +55,9 @@ bool BotFilter(int accepted) {
     if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}
     sleep(3);
         // If legit
-    command = "print You passed BOT CHECK\n\n\n";
-    if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}
-    command = "BotCheck passed";
+    /*command = "print You passed BOTCHECK\n\n\n";
+    if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}*/
+    command = "psdbf";
     if (send_net(accepted, &command[0], command.length()) == -1) {std::cout << "[" << ip << "] Disconnected\n"; return false;}
     return true;
 }

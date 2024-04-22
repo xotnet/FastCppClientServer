@@ -38,17 +38,21 @@ BigInt genKey(int conn_sock) {
 }
 
 int main() {
-	int conn_sock = connect_net("144.24.145.117", "1597");
+	int conn_sock = connect_net("127.0.0.1", "1597");
     if (conn_sock == -1) {std::cerr << "[Err] Server is down\n"; return 0;}
 	
     // BotFilterClient
     char recvBFBuf[1024] = "";
-    while (std::string(recvBFBuf) != "BotCheck passed") {
+    while (true) {
         memset(recvBFBuf, '\0', sizeof(recvBFBuf));
         recv_net(conn_sock, recvBFBuf, sizeof(recvBFBuf));
         if (std::string(recvBFBuf).substr(0, 5) == "print") {
             std::cout << std::string(recvBFBuf).substr(6);
         }
+		if (std::string(recvBFBuf).substr(0, 5) == "psdbf") {
+			std::cout << "BotFilter passed\n\n\n";
+			break;
+		}
     }
     
 	// gen shared key
@@ -67,6 +71,7 @@ int main() {
 		//send
 		std::cout << "Message to send: ";
 		std::getline(std::cin, buff);
+		if (buff == "logout" || buff == "exit") {exit(0);}
 		buff = crySynMethod(buff, result.to_string());
 		char charArrayBuff[buff.length()] = "";
 		strcpy(charArrayBuff, buff.c_str());

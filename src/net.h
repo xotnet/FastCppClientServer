@@ -65,7 +65,11 @@ int send_net(int socket, char* buf, int size) {
 }
 
 int recv_net(int socket, char* buf, int size) {
-	return recv(socket, buf, size, 0);
+	#ifdef __WIN32
+		return recv(socket, buf, size, 0);
+	#else
+		return recv(socket, buf, size, MSG_NOSIGNAL);
+	#endif
 }
 
 std::string resolve_net(const char* domain, const char* port) {
