@@ -38,7 +38,13 @@ BigInt genKey(int conn_sock) {
 }
 
 int main() {
-	int conn_sock = connect_net("127.0.0.1", "1597");
+	std::string address = "127.0.0.1";
+	char port[10] = "1597";
+	// if domain name
+	if (address[0] != '0' || address[0] != '1' || address[0] != '2' || address[0] != '3' || address[0] != '4' || address[0] != '5' || address[0] != '6' || address[0] != '7' || address[0] != '8' || address[0] != '9') {
+		address = resolve_net(&address[0], port);
+	}
+	int conn_sock = connect_net(&address[0], port);
     if (conn_sock == -1) {std::cerr << "[Err] Server is down\n"; return 0;}
 	
     // BotFilterClient
