@@ -23,7 +23,7 @@ std::string readPiece(std::string inputString, int start, int end = -1) {
 	return result;
 }
 
-std::string crySynMethod(std::string inputString, std::string key) {
+std::string crySynMethod(std::string inputString, std::string key) { // Not Crypto-Resistant
 	std::string toChars16bit = "";
 	std::string bitsAfterCrypting = "";
 	int i = 0;
